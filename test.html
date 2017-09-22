@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name = "viewport" content = "width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable=0">
+<title>ESP8266 WebSocket Demo</title>
+<style>
+"body { background-color: #808080; font-family: Arial, Helvetica, Sans-Serif; Color: #000000; }"
+</style>
+<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+<script>
+window.websock = null;
+window.start = function() {
+  window.websock = new WebSocket('ws://' + window.location.hostname + '192.168.0.22:9999/');
+  window.websock.onopen = function(evt) { console.log('websock open'); };
+  window.websock.onclose = function(evt) { console.log('websock close'); };
+  window.websock.onerror = function(evt) { console.log(evt); };
+  window.websock.onmessage = function(evt) {
+    console.log(evt);
+  };
+}
+function getRandomData(){
+  //make random string of hex rgb colors delimited by ';'
+  var str = "";
+  for(var i = 0; i < 60; i++){
+    str += Math.floor(Math.random()*16777215).toString(16);
+    if(i != 59)
+      str += ';';
+  }
+  console.log('str: ', str);
+  return str;
+}
+function sendData(){
+  // console.log('sending data');
+  window.websock.send(getRandomData());
+}
+function startSocket(e){
+  console.log('starting socket send');
+  this.counter = 0;
+  window.postInterval = setInterval(sendData.bind(this), 30);
+}
+function stopSocket(e){
+  console.log('stopping socket loop');
+  clearInterval(window.postInterval);
+}
+function buttonClick(e) {
+
+  window.websock.send(e.id);
+}
+</script>
+</head>
+<body onload="javascript:window.start();">
+<h1>ESP8266 WebSocket LED Strip Demo</h1>
+<button id="startButton"  type="button">Start</button> 
+<button id="stopButton" type="button">Stop</button>
+</body>
+<script>
+$('#startButton').on('click', startSocket);
+$('#stopButton').on('click', stopSocket);
+</script>
+</html>
