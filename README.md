@@ -7,6 +7,7 @@ Server receives a string of semi-colon delimited rgb values from test client and
 
 Tested using a NodeMCU devkit with Arduino IDE
 
-References: 
-https://github.com/esp8266/Arduino
-https://github.com/Links2004/arduinoWebSockets
+Dependencies: 
++ https://github.com/esp8266/Arduino
++ https://github.com/Links2004/arduinoWebSockets
++ https://github.com/adafruit/Adafruit_DotStar
