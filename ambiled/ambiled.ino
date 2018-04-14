@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <WebSocketsServer.h>
@@ -12,15 +13,19 @@
 //#include "user_interface.h"
 //}
 
-static const char ssid[] = "Abraham Linksys";
-static const char password[] = "not my real password";
+static const char ssid[] = "xxx";
+static const char password[] = "xxx";
 MDNSResponder mdns;
+
+const size_t bufferSize = JSON_ARRAY_SIZE(2) + JSON_OBJECT_SIZE(6);
+DynamicJsonBuffer jsonBuffer(bufferSize);
+//StaticJsonBuffer<200> jsonBuffer;
 
 ESP8266WiFiMulti WiFiMulti;
 
 WebSocketsServer webSocket = WebSocketsServer(9999);
 
-#define NUMPIXELS 60
+#define NUMPIXELS 240
 
 #define DATAPIN    13
 #define CLOCKPIN   14
@@ -29,32 +34,39 @@ Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN);
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
 {
-//  uint32_t free = system_get_free_heap_size();
-//  Serial.println("free mem: ");
-//  Serial.println(free);
   Serial.printf("webSocketEvent(%d, %d, ...)\r\n", num, type);
   switch(type) {
-    case WStype_DISCONNECTED:
+    case WStype_DISCONNECTED:{
       Serial.printf("[%u] Disconnected!\r\n", num);
       break;
-    case WStype_CONNECTED:
+    }
+    case WStype_CONNECTED:{
       {
         IPAddress ip = webSocket.remoteIP(num);
         Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
       }
       break;
+    }
       
-    case WStype_TEXT: //text
-      handleColorData((char*)payload, length);
+    case WStype_TEXT:{ //text
+//      Serial.printf("Payload: %s\r\n", payload);
+      JsonObject& root = jsonBuffer.parseObject(payload);
+      const char* exdata = root["_extendedData"][0];
+//      size_t len = root["_extendedData"][1];
+      Serial.printf("Extended Data: %s\r\n", exdata);
+      handleColorData((char*)exdata, NUMPIXELS);
       break;
+    }
       
-    case WStype_BIN: //binary
+    case WStype_BIN:{ //binary
       Serial.printf("[%u] get binary length: %u\r\n", num, length);
       break;
+    }
      
-    default:
+    default:{
       Serial.printf("Invalid WStype [%d]\r\n", type);
       break;
+    }
   }
 }
 
@@ -62,8 +74,16 @@ void handleColorData(char * data, size_t length){
   int head = 0;
   char* colorStr;
   while ((colorStr = strtok_r(data, ";", &data)) != NULL && head < NUMPIXELS){
-    long color = strtoul (colorStr, NULL, 16);
-    strip.setPixelColor(head, color);
+//    long color = strtoul (colorStr, NULL, 16);
+//    char* colorStr = "FF0000";
+    uint8_t rcolor =  strtoul (colorStr, NULL, 16) >> 16;
+    uint8_t gcolor =  strtoul (colorStr+2, NULL, 16) >> 8;
+    uint8_t bcolor =  strtoul (colorStr+4, NULL, 16);
+    uint32_t ucolor = packRGB(gcolor,
+                             rcolor,
+                             bcolor);
+//    setColor(ucolor, 0, 1);
+    strip.setPixelColor(head, ucolor);
     head++;
   }
   //show lights
@@ -109,6 +129,25 @@ void setup()
   //start websocket
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
+}
+
+
+void setColorRGB(uint8_t r, uint8_t g, uint8_t b, int from, int to){
+  int head = from;
+  while (head < to && head < NUMPIXELS){
+    Serial.print("rcolor: ");
+    Serial.println(r);
+    Serial.print("gcolor: ");
+    Serial.println(g);
+    Serial.print("bcolor: ");
+    Serial.println(b);
+    strip.setPixelColor(head, g, r, b);
+    head++;
+  }
+}
+
+uint32_t packRGB(uint8_t r, uint8_t g, uint8_t b) {
+  return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
 }
 
 void loop()
